@@ -11,8 +11,9 @@
 ## Правила
 
 - Не добавлять сюда product/store/cart/order логику.
-- Не переносить legacy `shop` из product service без проектирования нужной модели магазина.
-- Перед добавлением таблиц зафиксировать, что такое shop/channel для Sellgar: магазин, склад, витрина или sales channel.
+- Текущая первая таблица сервиса - `shop`; она владеет `uuid`, `version`, `name`, `status`, `createdAt`, `updatedAt`.
+- HTTP endpoints остаются в admin gateway, а этот сервис принимает RMQ-команды `shop.getAll`, `shop.getByUuid`, `shop.create`, `shop.update`.
+- Не смешивать shop со складом. Если появится многоскладской учет, проектировать отдельную warehouse/inventory границу.
 
 ## Проверка
 
