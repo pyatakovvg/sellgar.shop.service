@@ -23,4 +23,7 @@ export class ShopAddressModel {
 
   @Column({ type: 'text', nullable: true })
   comment: string | null;
+
+  @Column({ name: 'sort_order', type: 'integer', default: 0 })
+  sortOrder: number;
 }

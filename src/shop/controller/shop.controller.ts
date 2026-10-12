@@ -17,7 +17,7 @@ export class ShopController {
 
   @MessagePattern({ cmd: 'shop.getAll' })
   getAll(@Payload() dto: GetAllShopsDto) {
-    return this.service.getAll(dto.limit, dto.offset);
+    return this.service.getAll(dto.limit, dto.offset, dto.term);
   }
 
   @MessagePattern({ cmd: 'shop.getByUuid' })

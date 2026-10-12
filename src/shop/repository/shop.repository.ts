@@ -26,13 +26,55 @@ export class ShopRepository {
     private readonly outbox: ShopOutboxService,
   ) {}
 
-  async getAll(limit: number, offset: number) {
-    const [items, total] = await this.dataSource.getRepository(ShopModel).findAndCount({
-      relations: shopRelations,
-      order: { createdAt: 'DESC' },
-      take: limit,
-      skip: offset,
-    });
+  async getAll(limit: number, offset: number, term?: string) {
+    const query = this.dataSource
+      .getRepository(ShopModel)
+      .createQueryBuilder('shop')
+      .leftJoinAndSelect('shop.contacts', 'contacts')
+      .leftJoinAndSelect('shop.addresses', 'addresses')
+      .orderBy('shop.createdAt', 'DESC')
+      .addOrderBy('shop.uuid', 'ASC')
+      .take(limit)
+      .skip(offset);
+
+    const searchTerm = term?.trim();
+    if (searchTerm) {
+      query.andWhere(
+        `
+        (
+        to_tsvector('simple',
+          coalesce(shop.name, '') || ' ' ||
+          coalesce(shop.legal_name, '') || ' ' ||
+          coalesce(shop.entrepreneur_full_name, '') || ' ' ||
+          coalesce(shop.inn, '') || ' ' ||
+          coalesce(shop.kpp, '') || ' ' ||
+          coalesce(shop.ogrn, '') || ' ' ||
+          coalesce(shop.ogrnip, '')
+        ) || to_tsvector('russian',
+          coalesce(shop.name, '') || ' ' ||
+          coalesce(shop.legal_name, '') || ' ' ||
+          coalesce(shop.entrepreneur_full_name, '') || ' ' ||
+          coalesce(shop.inn, '') || ' ' ||
+          coalesce(shop.kpp, '') || ' ' ||
+          coalesce(shop.ogrn, '') || ' ' ||
+          coalesce(shop.ogrnip, '')
+        )
+        ) @@ (
+          SELECT string_agg(
+            '(' || (
+              to_tsquery('simple', quote_literal(token) || ':*') ||
+              plainto_tsquery('russian', token)
+            )::text || ')',
+            ' & '
+          )::tsquery
+          FROM unnest(tsvector_to_array(to_tsvector('simple', :term))) AS tokens(token)
+        )
+      `,
+        { term: searchTerm },
+      );
+    }
+
+    const [items, total] = await query.getManyAndCount();
     return { items, total, limit, offset };
   }
 
@@ -83,8 +125,8 @@ export class ShopRepository {
       where: { uuid },
       relations: shopRelations,
       order: {
-        contacts: { purpose: 'ASC', sortOrder: 'ASC', value: 'ASC' },
-        addresses: { type: 'ASC' },
+        contacts: { sortOrder: 'ASC' },
+        addresses: { sortOrder: 'ASC' },
       },
     });
     if (!shop) throw new NotFoundException(`Shop ${uuid} not found`);
@@ -115,24 +157,40 @@ export class ShopRepository {
     if (command.addresses !== undefined) await this.replaceAddresses(manager, shopUuid, command.addresses);
   }
 
-  private async replaceContacts(manager: EntityManager, shopUuid: string, contacts: ShopContactCommand[]): Promise<void> {
+  private async replaceContacts(
+    manager: EntityManager,
+    shopUuid: string,
+    contacts: ShopContactCommand[],
+  ): Promise<void> {
     for (const contact of contacts) {
       const valid = contact.type === ShopContactType.EMAIL ? isEmail(contact.value) : isPhoneNumber(contact.value);
       if (!valid) throw new BadRequestException(`Invalid ${contact.type} contact value`);
     }
     await manager.delete(ShopContactModel, { shopUuid });
-    if (contacts.length > 0) await manager.insert(ShopContactModel, contacts.map((contact) => ({ shopUuid, ...contact })));
+    if (contacts.length > 0)
+      await manager.insert(
+        ShopContactModel,
+        contacts.map((contact) => ({ shopUuid, ...contact })),
+      );
   }
 
-  private async replaceAddresses(manager: EntityManager, shopUuid: string, addresses: ShopAddressCommand[]): Promise<void> {
+  private async replaceAddresses(
+    manager: EntityManager,
+    shopUuid: string,
+    addresses: ShopAddressCommand[],
+  ): Promise<void> {
     await manager.delete(ShopAddressModel, { shopUuid });
     if (addresses.length > 0) {
-      await manager.insert(ShopAddressModel, addresses.map((address) => ({
-        shopUuid,
-        type: address.type,
-        address: address.address,
-        comment: address.comment ?? null,
-      })));
+      await manager.insert(
+        ShopAddressModel,
+        addresses.map((address, sortOrder) => ({
+          shopUuid,
+          type: address.type,
+          address: address.address,
+          comment: address.comment ?? null,
+          sortOrder,
+        })),
+      );
     }
   }
 

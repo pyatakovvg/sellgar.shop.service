@@ -1,18 +1,11 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 import { ShopLegalForm } from './shop-legal-form.enum';
 import { ShopAddressModel } from './shop-address.model';
 import { ShopContactModel } from './shop-contact.model';
 
 @Entity('shop')
+@Index('shop_search_vector_idx', { synchronize: false })
 export class ShopModel {
   @PrimaryGeneratedColumn('uuid')
   uuid: string;

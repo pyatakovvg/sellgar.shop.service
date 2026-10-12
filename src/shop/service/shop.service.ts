@@ -11,12 +11,14 @@ import { UpdateShopCommand } from './command/update-shop.command';
 export class ShopService {
   constructor(private readonly repository: ShopRepository) {}
 
-  async getAll(limit: number, offset: number): Promise<ShopPageEntity> {
-    const result = await this.repository.getAll(limit, offset);
-    return validateEntity(Object.assign(new ShopPageEntity(), {
-      data: result.items.map(ShopEntity.fromModel),
-      meta: Object.assign(new ShopPageMetaEntity(), { totalRows: result.total, limit, offset }),
-    }));
+  async getAll(limit: number, offset: number, term?: string): Promise<ShopPageEntity> {
+    const result = await this.repository.getAll(limit, offset, term);
+    return validateEntity(
+      Object.assign(new ShopPageEntity(), {
+        data: result.items.map(ShopEntity.fromModel),
+        meta: Object.assign(new ShopPageMetaEntity(), { totalRows: result.total, limit, offset }),
+      }),
+    );
   }
 
   async getByUuid(uuid: string): Promise<ShopEntity> {
@@ -30,5 +32,4 @@ export class ShopService {
   async update(command: UpdateShopCommand): Promise<ShopEntity> {
     return validateEntity(ShopEntity.fromModel(await this.repository.update(command)));
   }
-
 }
