@@ -8,7 +8,7 @@
   "scripts": {
     "update": "yarn upgrade-interactive",
     "prebuild": "rm -rf dist tsconfig.build.tsbuildinfo",
-    "build": "yarn prebuild && nest build",
+    "build": "yarn workspace @sellgar/outbox build && yarn prebuild && nest build",
     "build:shop_srv": "yarn build",
     "start:shop_srv": "nest start",
     "start:shop_srv.dev": "yarn prebuild && nest start --watch",
