@@ -1,3 +1,4 @@
 [submodule "library/sellgar.outbox.library"]
 	path = library/sellgar.outbox.library
 	url = ../sellgar.outbox.library.git
+	branch = development
