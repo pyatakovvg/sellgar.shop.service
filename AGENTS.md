@@ -15,7 +15,7 @@
 - Схема изменяется только TypeORM migrations; `synchronize` всегда выключен.
 - Изменение aggregate и запись integration event выполняются в одной транзакции через outbox.
 - Writer, claim, порядок версий, relay/retry/timeout и метрики принадлежат общему
-  @sellgar/outbox в library/sellgar.outbox.library. yarn build сначала собирает пакет;
+  @sellgar/outbox в code/library/sellgar.outbox.library. yarn build сначала собирает пакет;
   локальные копии инфраструктуры не создавать.
 - Магазин сам является продавцом. Не вводить отдельный seller aggregate без нового требования
   marketplace или независимого управления несколькими магазинами одним юридическим лицом.
@@ -30,9 +30,26 @@
 
 ## Проверка
 
+Из `code/`:
+
 ```bash
 yarn --version
 yarn migration:show
 yarn build
 yarn test --runInBand
 ```
+
+## Deployment
+
+- Структура `code/`, root `Dockerfile`, `.github/`, `helm/values.app.yaml`,
+  `helm/dev/values.yaml`, `helm/prod/values.yaml`; общий chart находится в infrastructure.
+- Рабочая ветка development; release/* → master с ручным продвижением того же digest.
+- Доменные операции остаются RMQ. Внутренний `/health` на PORT (default 8080)
+  проверяет PostgreSQL и подключение command consumer. Внешний Ingress запрещён.
+- Глобальные pipe/filter наследуются RMQ listener через inheritAppConfig.
+- Миграции выполняются Sync Job до Deployment. Конфигурация без секретов монтируется
+  как `/app/.env`; credentials берутся из Kubernetes Secrets.
+- CI recursive checkout получает outbox submodule. Runtime image содержит его
+  package.json и dist, чтобы production workspace dependency разрешалась штатно.
+- `.github/scripts/smoke-image.py` проверяет пустую БД, повторный запуск всех
+  миграций, RMQ CRUD/search/version conflict, порядок outbox events и readiness.

@@ -97,6 +97,8 @@ SHOP_SEARCH_INTEGRATION=true yarn test --runInBand shop.repository.integration.s
 
 ## Запуск и проверка
 
+Из `code/`:
+
 ```bash
 yarn install
 yarn migration:run
@@ -104,3 +106,29 @@ yarn build
 yarn test --runInBand
 yarn start:shop_srv.dev
 ```
+
+## CI и Kubernetes
+
+Репозиторий содержит `code/` (исходники, Yarn и outbox submodule), root Dockerfile,
+`.github/` и `helm/`. Helm values приложения задают ссылки на Secrets, а значения
+среды и содержимое `.env` ConfigMap находятся в `helm/dev/values.yaml`.
+
+GitHub CI development/release/*: build/test → isolated smoke → GHCR publish.
+Образ Node 24 работает от non-root с read-only filesystem; включает собранную
+общую библиотеку `@sellgar/outbox`. В image и Git нет секретных значений.
+Smoke поднимает пустые PostgreSQL 16/RabbitMQ, применяет девять миграций дважды,
+проверяет RMQ create/read/update/search/validation/version conflict, получает
+упорядоченные shop.created/shop.updated через exchange и проверяет потерю
+readiness при отключении тестового RabbitMQ. Тестовые volumes удаляются.
+
+Ручной production workflow продвигает проверенный release digest после merge
+release/* → master и готовит back-merge PR. Prod deployment пока не подключён.
+
+Dev Argo CD Application находится в infrastructure `services/shop-service/`.
+CloudNativePG создаёт отдельные базу/роль `shop_srv` из `shop-database` Secret.
+Migration Sync Job завершается до новой реплики. Runtime `.env` монтируется из
+ConfigMap, credentials DB/RabbitMQ передаются Secret refs через environment.
+Все внутренние HTTP listeners/Services используют 8080. `/health` проверяет БД
+и RMQ consumer; внешнего Ingress у Shop нет, HTTP API остаётся в admin gateway.
+
+Сервис разворачивается с пустой базой, без переноса локальных магазинов.

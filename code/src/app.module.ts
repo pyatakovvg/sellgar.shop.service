@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseOptions } from './database/database.options';
 import { ShopOutboxModule } from './integration/outbox/shop-outbox.module';
 import { ShopModule } from './shop/shop.module';
+import { HealthModule } from './api/health/health.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { ShopModule } from './shop/shop.module';
     TypeOrmModule.forRootAsync({ useFactory: () => databaseOptions(process.env) }),
     ShopOutboxModule,
     ShopModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
